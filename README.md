@@ -57,6 +57,12 @@ brew tap harrisonwang/tap
 brew install mingest
 ```
 
+或直接指定 tap：
+
+```bash
+brew install harrisonwang/tap/mingest
+```
+
 若你暂时不使用包管理器，也可以直接下载 GitHub Release 的产物。
 
 - `*_slim`：不内置工具，需要你自己装 `yt-dlp`、`ffmpeg`/`ffprobe`、`deno|node`；Homebrew 使用这一版并自动安装依赖
@@ -217,10 +223,8 @@ Windows 常见情况：
 
 ## 包管理器发布（维护者）
 
-本仓库内置了用于生成 Homebrew formula 的脚本、模板与工作流：
+本仓库内置了用于 Homebrew 分发的模板与工作流：
 
-- 脚本：
-  - `scripts/generate-homebrew-formula.sh`
 - Homebrew 模板：
   - `.github/homebrew/formula.rb.tmpl`
 - 工作流：

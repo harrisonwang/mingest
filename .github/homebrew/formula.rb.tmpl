@@ -10,27 +10,27 @@ class {{CLASS_NAME}} < Formula
 
   on_macos do
     on_arm do
-      url "{{BASE_URL}}/mingest_{{TAG}}_darwin_arm64_slim.tar.gz"
-      sha256 "{{SHA256:mingest_{{TAG}}_darwin_arm64_slim.tar.gz}}"
+      url "{{BASE_URL}}/{{TOOL}}_{{TAG}}_darwin_arm64_slim.tar.gz"
+      sha256 "{{SHA256:{{TOOL}}_{{TAG}}_darwin_arm64_slim.tar.gz}}"
     end
 
     on_intel do
-      url "{{BASE_URL}}/mingest_{{TAG}}_darwin_amd64_slim.tar.gz"
-      sha256 "{{SHA256:mingest_{{TAG}}_darwin_amd64_slim.tar.gz}}"
+      url "{{BASE_URL}}/{{TOOL}}_{{TAG}}_darwin_amd64_slim.tar.gz"
+      sha256 "{{SHA256:{{TOOL}}_{{TAG}}_darwin_amd64_slim.tar.gz}}"
     end
   end
 
   on_linux do
-    url "{{BASE_URL}}/mingest_{{TAG}}_linux_amd64_slim.tar.gz"
-    sha256 "{{SHA256:mingest_{{TAG}}_linux_amd64_slim.tar.gz}}"
+    url "{{BASE_URL}}/{{TOOL}}_{{TAG}}_linux_amd64_slim.tar.gz"
+    sha256 "{{SHA256:{{TOOL}}_{{TAG}}_linux_amd64_slim.tar.gz}}"
   end
 
   def install
-    bin.install "mingest/mingest"
+    bin.install "{{TOOL}}"
   end
 
   test do
-    output = shell_output("#{bin}/mingest --version")
-    assert_match "mingest", output
+    output = shell_output("#{bin}/{{TOOL}} --version")
+    assert_match "{{TOOL}}", output
   end
 end
