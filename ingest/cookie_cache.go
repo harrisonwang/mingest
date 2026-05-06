@@ -1,4 +1,4 @@
-// media-ingest (mingest) - Media Ingestion CLI tool
+// mingest - Media Ingestion CLI tool
 // Copyright (C) 2026  Harrison Wang <https://mingest.com>
 //
 // This program is free software: you can redistribute it and/or modify
@@ -38,4 +38,3 @@ func cookiesCacheFilePath(p videoPlatform) (string, error) {
 
 	return filepath.Join(base, p.ID+"-cookies.txt"), nil
 }
-

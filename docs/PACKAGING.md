@@ -1,28 +1,34 @@
 # 包管理器发布说明
 
-本文件说明 `brew` / `winget` 分发链路的维护方式。
+本文件说明 `brew` 分发链路的维护方式。
 
 ## 目标
 
 - macOS / Linux：通过 Homebrew 安装
-- Windows：通过 winget 安装
 
 ## 相关脚本
 
 - `scripts/generate-homebrew-formula.sh`
-- `scripts/generate-winget-manifests.sh`
 
-它们都以 `SHA256SUMS.txt` 作为单一校验数据来源，避免手工复制 hash。
+它们都以 `SHA256SUMS.txt` 作为单一校验数据来源，避免手工复制 hash。Homebrew 的自动发布由 `harrisonwang/homebrew-tap` 统一渲染，本仓库脚本主要用于本地校验和手动兜底。
+
+## Homebrew 模板
+
+- `.github/homebrew/formula.rb.tmpl`
+
+Homebrew 采用 slim 包，并让 brew 管理运行依赖：
+
+- `yt-dlp`
+- `ffmpeg`（包含 `ffprobe`）
+- `deno`
 
 ## 相关工作流
 
-- `.github/workflows/publish-homebrew.yml`
-- `.github/workflows/publish-winget.yml`
+- `.github/workflows/build-and-release.yml`（发版后通知 tap 仓库）
 
 触发方式：
 
-- `release.published`
-- `workflow_dispatch`（手动输入 tag）
+- Homebrew：tag 发版后发送 `repository_dispatch` 到 `harrisonwang/homebrew-tap`
 
 ## 手动生成（本地）
 
@@ -31,36 +37,19 @@ Homebrew Formula：
 ```bash
 scripts/generate-homebrew-formula.sh \
   --tag v0.4.2 \
-  --repo mingesthq/media-ingest \
+  --repo harrisonwang/mingest \
   --checksums artifacts/SHA256SUMS.txt \
   --output out/mingest.rb
 ```
 
-winget manifests：
+## 自动发布
 
-```bash
-scripts/generate-winget-manifests.sh \
-  --tag v0.4.2 \
-  --repo mingesthq/media-ingest \
-  --checksums artifacts/SHA256SUMS.txt \
-  --output-dir out
-```
+Homebrew：
 
-## 自动 PR（可选）
-
-如果配置了 secrets，工作流会自动创建 PR；未配置时会上传生成结果作为 artifact。
-
-Homebrew 首次发布的特殊行为：
-
-- 如果 `homebrew-tap` 还是空仓库（没有任何提交/默认分支），工作流会先把 `Formula/mingest.rb` 直接提交到 `main` 作为初始化
-- 从第二次发布开始，自动改为分支 + PR 流程
+- `build-and-release.yml` 在 release job 成功后通知 `harrisonwang/homebrew-tap`
+- tap 仓库读取本仓库 tag 下的 `.github/homebrew/formula.rb.tmpl`
+- tap 仓库下载同一 release 的 `SHA256SUMS.txt`，渲染并提交 `Formula/mingest.rb`
 
 Homebrew secrets：
 
-- `HOMEBREW_TAP_GH_TOKEN`
-- `HOMEBREW_TAP_REPO`（可选，默认 `mingesthq/homebrew-tap`）
-
-winget secrets：
-
-- `WINGET_GH_TOKEN`
-- `WINGET_FORK_REPO`（例如 `yourname/winget-pkgs`）
+- `HOMEBREW_TAP_TOKEN`

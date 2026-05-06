@@ -1,4 +1,4 @@
-// media-ingest (mingest) - Media Ingestion CLI tool
+// mingest (mingest) - Media Ingestion CLI tool
 // Copyright (C) 2026  Harrison Wang <https://mingest.com>
 //
 // This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@ package main
 import (
 	"os"
 
-	"media-ingest/ingest"
+	"mingest/ingest"
 )
 
 func main() {

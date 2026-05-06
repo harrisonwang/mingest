@@ -1,4 +1,4 @@
-// media-ingest (mingest) - Media Ingestion CLI tool
+// mingest - Media Ingestion CLI tool
 // Copyright (C) 2026  Harrison Wang <https://mingest.com>
 //
 // This program is free software: you can redistribute it and/or modify
@@ -36,8 +36,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"media-ingest/ingest/embedtools"
-	"media-ingest/ingest/platform/console"
+	"mingest/ingest/embedtools"
+	"mingest/ingest/platform/console"
 )
 
 const (

@@ -1,0 +1,36 @@
+class {{CLASS_NAME}} < Formula
+  desc "Local video archiving CLI powered by yt-dlp and ffmpeg"
+  homepage "https://github.com/{{REPO}}"
+  version "{{VERSION}}"
+  license "AGPL-3.0-only"
+
+  depends_on "yt-dlp"
+  depends_on "ffmpeg"
+  depends_on "deno"
+
+  on_macos do
+    on_arm do
+      url "{{BASE_URL}}/mingest_{{TAG}}_darwin_arm64_slim.tar.gz"
+      sha256 "{{SHA256:mingest_{{TAG}}_darwin_arm64_slim.tar.gz}}"
+    end
+
+    on_intel do
+      url "{{BASE_URL}}/mingest_{{TAG}}_darwin_amd64_slim.tar.gz"
+      sha256 "{{SHA256:mingest_{{TAG}}_darwin_amd64_slim.tar.gz}}"
+    end
+  end
+
+  on_linux do
+    url "{{BASE_URL}}/mingest_{{TAG}}_linux_amd64_slim.tar.gz"
+    sha256 "{{SHA256:mingest_{{TAG}}_linux_amd64_slim.tar.gz}}"
+  end
+
+  def install
+    bin.install "mingest/mingest"
+  end
+
+  test do
+    output = shell_output("#{bin}/mingest --version")
+    assert_match "mingest", output
+  end
+end

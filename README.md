@@ -1,4 +1,4 @@
-# Mingest (media-ingest)
+# Mingest
 
 ![og-image](og-image.png)
 
@@ -53,24 +53,18 @@ mingest auth bilibili
 ### Homebrew（macOS / Linux）
 
 ```bash
-brew tap mingesthq/tap
+brew tap harrisonwang/tap
 brew install mingest
-```
-
-### Winget（Windows）
-
-```powershell
-winget install Mingest.Mingest
 ```
 
 若你暂时不使用包管理器，也可以直接下载 GitHub Release 的产物。
 
-- `*_slim`：不内置工具，需要你自己装 `yt-dlp`、`ffmpeg`/`ffprobe`、`deno|node`
+- `*_slim`：不内置工具，需要你自己装 `yt-dlp`、`ffmpeg`/`ffprobe`、`deno|node`；Homebrew 使用这一版并自动安装依赖
 - `*_bundled`：内置 `yt-dlp`、`ffmpeg`/`ffprobe`、`deno`（开箱即用，体积更大；含 `THIRD_PARTY_LICENSES` 满足各组件许可归属）
 
 说明：
 
-- 当前推荐安装渠道：`brew`、`winget`
+- 当前推荐安装渠道：`brew`
 - 首版分发默认不含系统签名/公证，系统安全提示属于预期行为
 
 ## 用法
@@ -223,30 +217,23 @@ Windows 常见情况：
 
 ## 包管理器发布（维护者）
 
-本仓库内置了用于生成 Homebrew / winget 清单的脚本与工作流：
+本仓库内置了用于生成 Homebrew formula 的脚本、模板与工作流：
 
 - 脚本：
   - `scripts/generate-homebrew-formula.sh`
-  - `scripts/generate-winget-manifests.sh`
+- Homebrew 模板：
+  - `.github/homebrew/formula.rb.tmpl`
 - 工作流：
-  - `.github/workflows/publish-homebrew.yml`
-  - `.github/workflows/publish-winget.yml`
+  - `.github/workflows/build-and-release.yml`（发版后通知 tap 仓库）
 
 默认行为：
 
-- 每次发布 tag（`v*`）后，工作流会基于 `SHA256SUMS.txt` 生成 Formula / manifests 并上传为 artifacts
-- 若配置了对应 secrets，会自动尝试创建 PR
-- Homebrew 首次发布若 tap 为空仓库，会先自动初始化 `main` 分支（直推首个 `Formula/mingest.rb`）；后续版本走 PR 流程
+- 每次发布 tag（`v*`）后，release workflow 会发布 slim / bundled 产物和 `SHA256SUMS.txt`
+- Homebrew 更新逻辑集中在 `harrisonwang/homebrew-tap`，本仓库只发送 `repository_dispatch` 通知
 
-Homebrew 自动 PR 所需 secrets：
+Homebrew 通知 tap 所需 secret：
 
-- `HOMEBREW_TAP_GH_TOKEN`：可写目标 tap 仓库的 token
-- `HOMEBREW_TAP_REPO`：目标 tap 仓库（可选，默认 `mingesthq/homebrew-tap`）
-
-winget 自动 PR 所需 secrets：
-
-- `WINGET_GH_TOKEN`：可写你自己 winget-pkgs fork 的 token
-- `WINGET_FORK_REPO`：你的 fork 仓库（例如 `yourname/winget-pkgs`）
+- `HOMEBREW_TAP_TOKEN`：可触发 `harrisonwang/homebrew-tap` repository dispatch 的 token
 
 更多细节见 [docs/PACKAGING.md](docs/PACKAGING.md)。
 

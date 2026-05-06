@@ -1,4 +1,4 @@
-module media-ingest
+module mingest
 
 go 1.22
 

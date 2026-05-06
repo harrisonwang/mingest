@@ -6,7 +6,7 @@ usage() {
 Usage: $0 --tag <tag> --repo <owner/repo> --checksums <SHA256SUMS.txt> [--output <path>]
 
 Example:
-  $0 --tag v0.4.2 --repo mingesthq/media-ingest --checksums artifacts/SHA256SUMS.txt --output Formula/mingest.rb
+  $0 --tag v0.4.2 --repo harrisonwang/mingest --checksums artifacts/SHA256SUMS.txt --output Formula/mingest.rb
 USAGE
 }
 
@@ -55,9 +55,10 @@ if [[ ! -f "$CHECKSUMS" ]]; then
   exit 1
 fi
 
-asset_darwin_amd64="media-ingest_${TAG}_darwin_amd64_bundled.tar.gz"
-asset_darwin_arm64="media-ingest_${TAG}_darwin_arm64_bundled.tar.gz"
-asset_linux_amd64="media-ingest_${TAG}_linux_amd64_bundled.tar.gz"
+VER_NUM="${TAG#v}"
+asset_darwin_amd64="mingest_${TAG}_darwin_amd64_slim.tar.gz"
+asset_darwin_arm64="mingest_${TAG}_darwin_arm64_slim.tar.gz"
+asset_linux_amd64="mingest_${TAG}_linux_amd64_slim.tar.gz"
 
 sha_for() {
   local name="$1"
@@ -80,13 +81,20 @@ render() {
 class Mingest < Formula
   desc "Local video archiving CLI powered by yt-dlp and ffmpeg"
   homepage "https://github.com/${REPO}"
+  version "${VER_NUM}"
   license "AGPL-3.0-only"
 
+  depends_on "yt-dlp"
+  depends_on "ffmpeg"
+  depends_on "deno"
+
   on_macos do
-    if Hardware::CPU.arm?
+    on_arm do
       url "${url_base}/${asset_darwin_arm64}"
       sha256 "${sha_darwin_arm64}"
-    else
+    end
+
+    on_intel do
       url "${url_base}/${asset_darwin_amd64}"
       sha256 "${sha_darwin_amd64}"
     end

@@ -68,7 +68,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p out
-          gh release download "$TAG" -R "${{ github.repository }}" -D out --pattern "media-ingest_*_bundled.*"
+          gh release download "$TAG" -R "${{ github.repository }}" -D out --pattern "mingest_*_bundled.*"
           gh release download "$TAG" -R "${{ github.repository }}" -D out --pattern "SHA256SUMS.txt"
           ls -la out
 
@@ -78,16 +78,16 @@ jobs:
           set -euo pipefail
           mkdir -p mirror
 
-          cp "out/media-ingest_${TAG}_windows_amd64_bundled.zip" "mirror/mingest-windows-x64.zip"
-          cp "out/media-ingest_${TAG}_linux_amd64_bundled.tar.gz" "mirror/mingest-linux-x64.tar.gz"
-          cp "out/media-ingest_${TAG}_darwin_amd64_bundled.tar.gz" "mirror/mingest-macos-x64.tar.gz"
-          cp "out/media-ingest_${TAG}_darwin_arm64_bundled.tar.gz" "mirror/mingest-macos-arm64.tar.gz"
+          cp "out/mingest_${TAG}_windows_amd64_bundled.zip" "mirror/mingest-windows-x64.zip"
+          cp "out/mingest_${TAG}_linux_amd64_bundled.tar.gz" "mirror/mingest-linux-x64.tar.gz"
+          cp "out/mingest_${TAG}_darwin_amd64_bundled.tar.gz" "mirror/mingest-macos-x64.tar.gz"
+          cp "out/mingest_${TAG}_darwin_arm64_bundled.tar.gz" "mirror/mingest-macos-arm64.tar.gz"
 
           # Reuse hashes from SHA256SUMS.txt but rewrite filenames to the stable ones.
-          awk -v win="media-ingest_${TAG}_windows_amd64_bundled.zip" \
-              -v linux="media-ingest_${TAG}_linux_amd64_bundled.tar.gz" \
-              -v macx="media-ingest_${TAG}_darwin_amd64_bundled.tar.gz" \
-              -v maca="media-ingest_${TAG}_darwin_arm64_bundled.tar.gz" '
+          awk -v win="mingest_${TAG}_windows_amd64_bundled.zip" \
+              -v linux="mingest_${TAG}_linux_amd64_bundled.tar.gz" \
+              -v macx="mingest_${TAG}_darwin_amd64_bundled.tar.gz" \
+              -v maca="mingest_${TAG}_darwin_arm64_bundled.tar.gz" '
             $2==win   {print $1"  mingest-windows-x64.zip"}
             $2==linux {print $1"  mingest-linux-x64.tar.gz"}
             $2==macx  {print $1"  mingest-macos-x64.tar.gz"}
