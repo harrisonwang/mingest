@@ -50,7 +50,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   - Windows/Linux 构建: https://github.com/BtbN/FFmpeg-Builds (ffmpeg-master-latest-*-gpl)
   - macOS 构建: https://ffmpeg.martin-riedl.de/ (来自 Martin Riedl 的签名构建)
 
-GPL 要求：分发二进制时须提供对应源码之获取途径。您可通过上述链接获取 FFmpeg 完整源码及本发布所用构建的对应信息。本项目未对 FFmpeg 进行修改，所有版权归 FFmpeg 项目及其贡献者所有。若上述途径无法满足您的需求，您可联系本项目维护者（见 README）获取书面源码提供要约。
+GPL 要求：分发二进制时须提供对应源码之获取途径。您可通过上述链接获取 FFmpeg 完整源码及本发布所用构建的对应信息。本项目未对 FFmpeg 进行修改，所有版权归 FFmpeg 项目及其贡献者所有。若上述途径无法满足您的需求，您可联系本项目维护者（见 [README.md](../README.md)）获取书面源码提供要约。
 
 ---
 

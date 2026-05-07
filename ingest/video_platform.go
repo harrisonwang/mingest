@@ -32,7 +32,7 @@ type videoPlatform struct {
 	// (e.g. "youtube.com", "youtu.be").
 	MatchHosts []string
 
-	// LoginURL is the URL opened during `mingest auth <platform>`.
+	// LoginURL is the URL opened during `mingest auth login <platform>`.
 	LoginURL string
 
 	// CookieDomainSuffixes define which cookie domains we will keep when persisting

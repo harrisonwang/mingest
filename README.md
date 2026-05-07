@@ -2,9 +2,9 @@
 
 ![og-image](og-image.png)
 
-**Mingest 是一个本地运行的视频归档工具**：输入 URL，自动调用 `yt-dlp` 下载，并默认合并为 `mp4`（嵌入封面与元数据）。遇到需要登录/会员/额外验证（例如年龄确认）的内容，可用一键 `auth` 交互登录 + cookies 缓存把门槛降到最低。
+**Mingest 是一个本地运行的视频批量下载 CLI**：输入 URL 或 URL 列表，自动调用 `yt-dlp` 下载，并默认合并为 `mp4`（嵌入封面与元数据）。下载失败时会留下结构化记录、错误码和恢复建议，方便只重跑失败任务。
 
-> 合规提示：Mingest 仅用于下载/归档你拥有版权或已获授权、或在法律与平台规则允许范围内可保存的内容。它不提供任何内容，不提供在线解析/代下服务，也不支持绕过 DRM 等技术保护措施。更多见：
+> 合规提示：Mingest 仅用于下载你拥有版权或已获授权、或在法律与平台规则允许范围内可保存的内容。它不提供任何内容，不提供在线解析/代下服务，也不支持绕过 DRM 等技术保护措施。更多见：
 > [docs/LEGAL.md](docs/LEGAL.md)。
 
 ```bash
@@ -24,8 +24,9 @@ mingest get "https://www.bilibili.com/bangumi/play/ep******"
 - 默认下载并合并为 `mp4`，附带元数据并嵌入封面
 - 自动维护 **cookies 缓存**（优先使用；必要时从浏览器读取 cookies 刷新登录状态）
 - Windows 下 Chrome cookies 读取失败时：自动尝试 **CDP**（让 Chrome 在进程内导出明文 cookies，避免读取/解密数据库）
-- 下载成功后生成 `asset_id`，可通过 `--asset-id-only` 或 `--json` 交给脚本使用
-- 支持 `mingest ls` 查看本机下载历史记录
+- 下载成功后生成 `asset_id`，每次成功/失败都会留下 `task_id` 结果记录
+- 支持批量下载、失败继续、JSONL 输出、只重跑失败任务
+- 支持 `mingest ls` 查看本机下载与失败记录
 
 ## 快速开始
 
@@ -39,8 +40,8 @@ mingest get "<url>"
 3. 需要登录时（例如大会员、年龄确认、风险提示），先执行一次交互登录：
 
 ```bash
-mingest auth youtube
-mingest auth bilibili
+mingest auth login youtube
+mingest auth login bilibili
 ```
 
 ## 安装
@@ -76,18 +77,25 @@ brew install harrisonwang/tap/mingest
 
 ```bash
 mingest get "<url>"
+mingest get --batch urls.txt --continue-on-error --jsonl
+mingest get --failed-only result.jsonl --jsonl
 ```
 
 查看下载历史：
 
 ```bash
-mingest ls --limit 20
+mingest ls --limit 50
+mingest ls --failed
+mingest ls --missing
 ```
 
 交互登录（一次性准备登录信息，写入 cookies 缓存）：
 
 ```bash
-mingest auth <platform>
+mingest auth login <platform>
+mingest auth status
+mingest auth validate youtube
+mingest auth clear youtube
 ```
 
 查看版本：
@@ -114,11 +122,16 @@ cookies 缓存文件（按平台分别保存）：
 - 若缓存失效/缺失：按顺序从浏览器读取并刷新（默认顺序 `chrome -> firefox -> chromium -> edge`，失败会自动切换）
 - 为避免“未登录的浏览器覆盖掉已登录缓存”，浏览器导出的 cookies 会先写入临时文件；检测到有效登录信号后才会更新缓存
 
-`mingest auth <platform>` 行为：
+`mingest auth login <platform>` 行为：
 
 - 启动一个工具专用的 Chrome profile（位于状态目录下的 `mingest/chrome-profile`）
 - 你在弹出的 Chrome 窗口完成登录后回到终端按回车
 - 工具从 Chrome 进程内导出 cookies，写入该平台的 cookies 缓存文件
+
+结果记录文件：
+
+- macOS / Linux / Windows：位于 `os.UserConfigDir()/mingest/results-v1.jsonl`
+- 每行是一条 JSON 记录，包含 `schema_version`、`task_id`、`asset_id`、`source_url`、`ok`、`error_code`、`exit_code`、`recovery_hint`、`recommended_command`
 
 Windows 常见情况：
 
@@ -173,7 +186,7 @@ Windows 常见情况：
 1. 提示需要登录/会员/验证
 
 - 先在浏览器确认账号可正常观看
-- 再执行：`mingest auth youtube` / `mingest auth bilibili`
+- 再执行：`mingest auth login youtube` / `mingest auth login bilibili`
 - 若是“额外确认”（例如年龄确认/风险提示/会员提示），建议在 `auth` 打开的窗口中打开目标视频并完成确认后再回车
 
 2. Windows：`Could not copy Chrome cookie database` / `Failed to decrypt with DPAPI`

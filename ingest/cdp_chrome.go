@@ -82,28 +82,33 @@ func runAuth(platform videoPlatform) int {
 	return exitOK
 }
 
-func tryDownloadWithChromeCDP(targetURL string, d deps, platform videoPlatform, cookieCacheFile string, cfg ytDlpConfig) (int, []string) {
+func tryDownloadWithChromeCDP(targetURL string, d deps, platform videoPlatform, cookieCacheFile string, cfg ytDlpConfig) (failureClassification, []string) {
 	chromePath, err := findChromeExecutable()
 	if err != nil {
 		logWarn("auth.chrome_not_found", "error", err)
-		return exitCookieProblem, nil
+		return failureFromExit(exitCookieProblem, "未找到 Chrome，无法使用 CDP 登录状态导出。", authLoginCommand(platform)), nil
 	}
 	profileDir, err := chromeProfileDir()
 	if err != nil {
 		logWarn("auth.chrome_profile_path_resolve_failed", "error", err)
-		return exitCookieProblem, nil
+		return failureFromExit(exitCookieProblem, "无法解析 Chrome 登录 profile 路径。", authLoginCommand(platform)), nil
 	}
 
 	cookieFile, cleanup, cookies, err := exportCookiesFromChromeCDP(chromePath, profileDir, platform, true)
 	if err != nil {
 		logWarn("auth.cdp_cookie_export_failed", "error", err)
-		return exitCookieProblem, nil
+		return failureFromExit(exitCookieProblem, "Chrome CDP cookies 导出失败。", authLoginCommand(platform)), nil
 	}
 	defer cleanup()
 
 	if !looksLikeLoggedIn(cookies, platform) {
 		// This is a stronger signal than inferring from yt-dlp output: we didn't even get auth cookies.
-		return exitAuthRequired, nil
+		return failureClassification{
+			ExitCode:           exitAuthRequired,
+			ErrorCode:          errorAuthRequired,
+			RecoveryHint:       "未检测到有效登录 cookies。请在 auth 打开的浏览器窗口中登录并完成必要验证。",
+			RecommendedCommand: authLoginCommand(platform),
+		}, nil
 	}
 
 	// Best-effort: refresh the persistent cache so subsequent `mingest get` runs can use it directly.
