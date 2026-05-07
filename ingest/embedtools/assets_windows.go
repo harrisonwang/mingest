@@ -29,7 +29,7 @@ import (
 //   assets/windows/yt-dlp.exe
 //   assets/windows/ffmpeg.exe
 //   assets/windows/ffprobe.exe (optional but recommended)
-//   assets/windows/deno.exe
+//   assets/windows/node.exe
 
 //go:embed assets/windows/*
 var embeddedFS embed.FS

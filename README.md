@@ -20,15 +20,12 @@ mingest get "https://www.bilibili.com/bangumi/play/ep******"
 
 ## 能做什么
 
-- 自动检测并调用：`yt-dlp`、`ffmpeg`/`ffprobe`、`deno|node`
+- 自动检测并调用：`yt-dlp`、`ffmpeg`/`ffprobe`、`node`
 - 默认下载并合并为 `mp4`，附带元数据并嵌入封面
 - 自动维护 **cookies 缓存**（优先使用；必要时从浏览器读取 cookies 刷新登录状态）
 - Windows 下 Chrome cookies 读取失败时：自动尝试 **CDP**（让 Chrome 在进程内导出明文 cookies，避免读取/解密数据库）
-- 自动维护素材索引（`asset_id`），支持 `mingest ls` 检索
-- 支持 `mingest prep` 生成字幕/片段候选与 `prep-plan.json`
-- 支持 `mingest export` 导出到 Premiere / Resolve / CapCut（可选 `zip`）
-- 支持 `mingest doctor` 做导出前质量闸门（时长、重叠、字幕覆盖、边界切断、重复度）
-- 支持 `mingest semantic` 语义候选流水线（A-E）：候选生成 -> GPT 重排 -> 约束选段 -> 评审包 -> 写回+doctor
+- 下载成功后生成 `asset_id`，可通过 `--asset-id-only` 或 `--json` 交给脚本使用
+- 支持 `mingest ls` 查看本机下载历史记录
 
 ## 快速开始
 
@@ -65,8 +62,8 @@ brew install harrisonwang/tap/mingest
 
 若你暂时不使用包管理器，也可以直接下载 GitHub Release 的产物。
 
-- `*_slim`：不内置工具，需要你自己装 `yt-dlp`、`ffmpeg`/`ffprobe`、`deno|node`；Homebrew 使用这一版并自动安装依赖
-- `*_bundled`：内置 `yt-dlp`、`ffmpeg`/`ffprobe`、`deno`（开箱即用，体积更大；含 `THIRD_PARTY_LICENSES` 满足各组件许可归属）
+- `*_slim`：不内置工具，需要你自己装 `yt-dlp`、`ffmpeg`/`ffprobe`、`node`；Homebrew 使用这一版并自动安装依赖
+- `*_bundled`：内置 `yt-dlp`、`ffmpeg`/`ffprobe`、`node`（开箱即用，体积更大；含 `THIRD_PARTY_LICENSES` 满足各组件许可归属）
 
 说明：
 
@@ -81,46 +78,22 @@ brew install harrisonwang/tap/mingest
 mingest get "<url>"
 ```
 
-查看素材索引：
+查看下载历史：
 
 ```bash
 mingest ls --limit 20
-```
-
-预处理（生成片段候选与字幕产物）：
-
-```bash
-mingest prep <asset_ref> --goal shorts
-```
-
-导出到剪辑软件：
-
-```bash
-mingest export <asset_ref> --to capcut --zip
-```
-
-导出前诊断：
-
-```bash
-mingest doctor <asset_ref> --target shorts --strict
-```
-
-语义候选流水线（默认生成评审包，不直接改 `prep-plan`）：
-
-```bash
-mingest semantic <asset_ref> --target shorts
-```
-
-应用评审结果并写回 `prep-plan`：
-
-```bash
-mingest semantic <asset_ref> --target shorts --apply --decisions <path/to/review-decisions.json>
 ```
 
 交互登录（一次性准备登录信息，写入 cookies 缓存）：
 
 ```bash
 mingest auth <platform>
+```
+
+查看版本：
+
+```bash
+mingest -V
 ```
 
 支持的平台：
@@ -164,16 +137,12 @@ Windows 常见情况：
 
 - `MINGEST_BROWSER=chrome|firefox|chromium|edge`
 - `MINGEST_BROWSER_PROFILE=Default|Profile 1|...`
-- `MINGEST_JS_RUNTIME=node|deno`
+- `MINGEST_JS_RUNTIME=node`
 - `MINGEST_CHROME_PATH=C:\\Path\\To\\chrome.exe`
-- `MINGEST_OPENAI_API_KEY` / `OPENAI_API_KEY`
-- `MINGEST_OPENROUTER_API_KEY` / `OPENROUTER_API_KEY`
-- `MINGEST_OPENROUTER_BASE_URL`（默认 `https://openrouter.ai/api/v1`）
-- `MINGEST_LLM_MODEL`（如 `gpt-4.1-mini` 或 `openai/gpt-4.1-mini`）
 
 ## 依赖查找顺序
 
-每个依赖（`yt-dlp`、`ffmpeg`、`ffprobe`、`deno`、`node`）按以下顺序查找：
+每个依赖（`yt-dlp`、`ffmpeg`、`ffprobe`、`node`）按以下顺序查找：
 
 1. 内置（`-tags embedtools` 构建时嵌入的工具）
 2. 当前工作目录（你运行 `mingest` 的目录）
@@ -194,12 +163,10 @@ Windows 常见情况：
 
 - `20` `AUTH_REQUIRED`：需要登录
 - `21` `COOKIE_PROBLEM`：cookies 读取/解密/数据库占用问题
-- `30` `RUNTIME_MISSING`：`deno|node` 不可用
+- `30` `RUNTIME_MISSING`：`node` 不可用
 - `31` `FFMPEG_MISSING`：`ffmpeg`/`ffprobe` 不可用
 - `32` `YTDLP_MISSING`：`yt-dlp` 不可用
 - `40` `DOWNLOAD_FAILED`：下载失败（其它原因）
-- `41` `DOCTOR_FAILED`：`doctor` 检查未通过（存在 FAIL 项）
-- `42` `SEMANTIC_FAILED`：`semantic` 流程执行失败
 
 ## 常见问题
 
@@ -267,4 +234,4 @@ go build -tags embedtools -o dist/mingest ./cmd/mingest
 本项目采用 [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) 开源协议。  
 Copyright (C) 2026 Harrison Wang <https://mingest.com>
 
-`*_bundled` 版本内置的 yt-dlp、ffmpeg/ffprobe、deno 为独立第三方组件，其版权与许可见 [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES)。
+`*_bundled` 版本内置的 yt-dlp、ffmpeg/ffprobe、node 为独立第三方组件，其版权与许可见 [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES)。

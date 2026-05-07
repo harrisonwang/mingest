@@ -14,7 +14,7 @@ Homebrew 采用 slim 包，并让 brew 管理运行依赖：
 
 - `yt-dlp`
 - `ffmpeg`（包含 `ffprobe`）
-- `deno`
+- `node`
 
 ## 相关工作流
 

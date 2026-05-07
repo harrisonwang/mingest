@@ -10,12 +10,12 @@ Note: when fetching ffmpeg, this script also fetches ffprobe from the same build
 
 Examples:
   scripts/fetch-embed-tools.sh --os windows --arch amd64
-  scripts/fetch-embed-tools.sh --os darwin --arch arm64 --tools yt-dlp,ffmpeg,deno
+  scripts/fetch-embed-tools.sh --os darwin --arch arm64 --tools yt-dlp,ffmpeg,node
 
 Flags:
   --os <goos>        windows|linux|darwin (default: GOOS env or `go env GOOS`)
   --arch <goarch>    amd64|arm64         (default: GOARCH env or `go env GOARCH`)
-  --tools <csv>      yt-dlp,ffmpeg,deno  (default: yt-dlp,ffmpeg,deno)
+  --tools <csv>      yt-dlp,ffmpeg,node  (default: yt-dlp,ffmpeg,node)
 EOF
 }
 
@@ -47,7 +47,7 @@ trap cleanup EXIT
 
 GOOS="${GOOS:-}"
 GOARCH="${GOARCH:-}"
-TOOLS="yt-dlp,ffmpeg,deno"
+TOOLS="yt-dlp,ffmpeg,node"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -85,8 +85,8 @@ case "${GOARCH}" in
   *) die "unsupported --arch: ${GOARCH}" ;;
 esac
 
-# Only required for extracting linux ffmpeg tarballs.
-if csv_has "${TOOLS}" "ffmpeg" && [[ "${GOOS}" == "linux" ]]; then
+# Required for extracting linux ffmpeg tarballs and Node's non-Windows archives.
+if { csv_has "${TOOLS}" "ffmpeg" && [[ "${GOOS}" == "linux" ]]; } || { csv_has "${TOOLS}" "node" && [[ "${GOOS}" != "windows" ]]; }; then
   need tar
 fi
 
@@ -154,22 +154,65 @@ fetch_ytdlp() {
   chmod_x "${target}"
 }
 
-fetch_deno() {
-  local zip="${tmpdir}/deno.zip"
-  local target="${out_dir}/deno"
+fetch_node() {
+  local platform=""
+  local archive_ext=""
+  local target="${out_dir}/node"
 
-  local asset=""
   case "${GOOS}/${GOARCH}" in
-    windows/amd64) asset="deno-x86_64-pc-windows-msvc.zip"; target="${out_dir}/deno.exe" ;;
-    linux/amd64) asset="deno-x86_64-unknown-linux-gnu.zip" ;;
-    linux/arm64) asset="deno-aarch64-unknown-linux-gnu.zip" ;;
-    darwin/amd64) asset="deno-x86_64-apple-darwin.zip" ;;
-    darwin/arm64) asset="deno-aarch64-apple-darwin.zip" ;;
-    *) die "no deno asset mapping for ${GOOS}/${GOARCH}" ;;
+    windows/amd64) platform="win-x64"; archive_ext="zip"; target="${out_dir}/node.exe" ;;
+    windows/arm64) platform="win-arm64"; archive_ext="zip"; target="${out_dir}/node.exe" ;;
+    linux/amd64) platform="linux-x64"; archive_ext="tar.xz" ;;
+    linux/arm64) platform="linux-arm64"; archive_ext="tar.xz" ;;
+    darwin/amd64) platform="darwin-x64"; archive_ext="tar.gz" ;;
+    darwin/arm64) platform="darwin-arm64"; archive_ext="tar.gz" ;;
+    *) die "no node asset mapping for ${GOOS}/${GOARCH}" ;;
   esac
 
-  download "https://github.com/denoland/deno/releases/latest/download/${asset}" "${zip}"
-  extract_zip_member "${zip}" "$(basename "${target}")" "${target}"
+  local index="${tmpdir}/node-index.json"
+  download "https://nodejs.org/dist/index.json" "${index}"
+
+  local version=""
+  version="$("${PYTHON}" - "${index}" "${platform}" <<'PY'
+import json, sys
+index_path, platform = sys.argv[1], sys.argv[2]
+with open(index_path, "r", encoding="utf-8") as f:
+  releases = json.load(f)
+
+def has_platform(release):
+  return platform in release.get("files", [])
+
+for release in releases:
+  if release.get("lts") and has_platform(release):
+    print(release["version"])
+    raise SystemExit(0)
+for release in releases:
+  if has_platform(release):
+    print(release["version"])
+    raise SystemExit(0)
+raise SystemExit(f"node release not found for platform: {platform}")
+PY
+)"
+
+  local archive="${tmpdir}/node.${archive_ext}"
+  local asset="node-${version}-${platform}.${archive_ext}"
+  download "https://nodejs.org/dist/${version}/${asset}" "${archive}"
+
+  if [[ "${archive_ext}" == "zip" ]]; then
+    extract_zip_member "${archive}" "node.exe" "${target}"
+  else
+    local xdir="${tmpdir}/node-extract"
+    mkdir -p "${xdir}"
+    tar -C "${xdir}" -xf "${archive}"
+    local node_found=""
+    node_found="$(find "${xdir}" -type f -path "*/bin/node" -perm -u+x 2>/dev/null | head -n 1 || true)"
+    if [[ -z "${node_found}" ]]; then
+      node_found="$(find "${xdir}" -type f -path "*/bin/node" 2>/dev/null | head -n 1 || true)"
+    fi
+    [[ -n "${node_found}" ]] || die "node binary not found inside: ${archive}"
+    cp -f "${node_found}" "${target}"
+  fi
+
   chmod_x "${target}"
 }
 
@@ -238,7 +281,7 @@ echo "target: ${out_dir}"
 echo "tools:  ${TOOLS}"
 
 if csv_has "${TOOLS}" "yt-dlp"; then fetch_ytdlp; fi
-if csv_has "${TOOLS}" "deno"; then fetch_deno; fi
+if csv_has "${TOOLS}" "node"; then fetch_node; fi
 if csv_has "${TOOLS}" "ffmpeg"; then fetch_ffmpeg; fi
 
 echo "ok:"

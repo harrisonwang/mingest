@@ -29,7 +29,7 @@ import (
 //   assets/darwin/yt-dlp
 //   assets/darwin/ffmpeg
 //   assets/darwin/ffprobe (optional but recommended)
-//   assets/darwin/deno
+//   assets/darwin/node
 
 //go:embed assets/darwin/*
 var embeddedFS embed.FS

@@ -41,4 +41,4 @@ Mingest 会自动寻找并调用：
 
 - `yt-dlp`
 - `ffmpeg`/`ffprobe`
-- `deno` 或 `node`
+- `node`

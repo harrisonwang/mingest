@@ -29,7 +29,7 @@ import (
 //
 // Default builds do not embed any tools. When built with `-tags embedtools`,
 // platform-specific go:embed declarations (see assets_*.go) provide the bytes
-// for yt-dlp/ffmpeg/deno (and optionally node).
+// for yt-dlp/ffmpeg/node.
 
 var (
 	extractOnce sync.Once

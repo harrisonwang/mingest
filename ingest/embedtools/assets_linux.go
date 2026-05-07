@@ -29,7 +29,7 @@ import (
 //   assets/linux/yt-dlp
 //   assets/linux/ffmpeg
 //   assets/linux/ffprobe (optional but recommended)
-//   assets/linux/deno
+//   assets/linux/node
 
 //go:embed assets/linux/*
 var embeddedFS embed.FS

@@ -49,8 +49,6 @@ const (
 	exitFFmpegMissing  = 31
 	exitYtDlpMissing   = 32
 	exitDownloadFailed = 40
-	exitDoctorFailed   = 41
-	exitSemanticFailed = 42
 )
 
 const (
@@ -175,22 +173,6 @@ func Main(args []string) int {
 			return exitUsage
 		}
 		return runGet(opts)
-	case "prep":
-		opts, err := parsePrepOptions(args[2:])
-		if err != nil {
-			logError("cli.invalid_arguments", "command", "prep", "error", err)
-			usage()
-			return exitUsage
-		}
-		return runPrep(opts)
-	case "export":
-		opts, err := parseExportOptions(args[2:])
-		if err != nil {
-			logError("cli.invalid_arguments", "command", "export", "error", err)
-			usage()
-			return exitUsage
-		}
-		return runExport(opts)
 	case "ls":
 		opts, err := parseLsOptions(args[2:])
 		if err != nil {
@@ -199,22 +181,6 @@ func Main(args []string) int {
 			return exitUsage
 		}
 		return runLs(opts)
-	case "doctor":
-		opts, err := parseDoctorOptions(args[2:])
-		if err != nil {
-			logError("cli.invalid_arguments", "command", "doctor", "error", err)
-			usage()
-			return exitUsage
-		}
-		return runDoctor(opts)
-	case "semantic":
-		opts, err := parseSemanticOptions(args[2:])
-		if err != nil {
-			logError("cli.invalid_arguments", "command", "semantic", "error", err)
-			usage()
-			return exitUsage
-		}
-		return runSemantic(opts)
 	case "auth", "login":
 		if len(args) != 3 {
 			usage()
@@ -236,32 +202,14 @@ func Main(args []string) int {
 func usage() {
 	fmt.Println("用法:")
 	fmt.Println("  mingest get <url> [--out-dir <dir>] [--name-template <tpl>] [--asset-id-only] [--json]")
-	fmt.Println("  mingest prep <asset_ref> --goal <subtitle|highlights|shorts> [--lang <auto|zh|en>] [--max-clips <n>] [--clip-seconds <sec>] [--subtitle-style <clean|shorts>] [--json]")
-	fmt.Println("  mingest export <asset_ref> --to <premiere|resolve|capcut> [--with <srt,edl,csv,fcpxml>] [--out-dir <dir>] [--zip] [--json]")
 	fmt.Println("  mingest ls [--limit <n>] [--query <text>] [--format <table|json>] [--dedupe]")
-	fmt.Println("  mingest doctor <asset_ref> [--target <youtube|bilibili|shorts>] [--strict] [--json]")
-	fmt.Println("  mingest semantic <asset_ref> [--target <youtube|bilibili|shorts>] [--provider <auto|openai|openrouter>] [--model <name>] [--visual-diversity <0-1>] [--apply] [--json]")
 	fmt.Println("  mingest auth <platform>")
+	fmt.Println("  mingest -V|--version")
 	fmt.Println()
 	fmt.Println("get 参数:")
 	fmt.Println("  --out-dir <dir>           设置下载目录（默认当前工作目录）")
 	fmt.Println("  --name-template <tpl>     设置输出模板（默认 %(title)s.%(ext)s）")
 	fmt.Println("  --asset-id-only           仅输出 asset_id（便于脚本串联）")
-	fmt.Println("  --json                    输出 JSON 结果")
-	fmt.Println()
-	fmt.Println("prep 参数:")
-	fmt.Println("  --goal <v>                处理目标：subtitle|highlights|shorts")
-	fmt.Println("  --lang <v>                语言（默认 auto）")
-	fmt.Println("  --max-clips <n>           建议片段数（默认 subtitle/highlights=5, shorts=3）")
-	fmt.Println("  --clip-seconds <n>        单片段建议时长秒数（默认 subtitle/highlights=45, shorts=30）")
-	fmt.Println("  --subtitle-style <v>      字幕模板风格：clean|shorts（默认 clean）")
-	fmt.Println("  --json                    输出 JSON 结果")
-	fmt.Println()
-	fmt.Println("export 参数:")
-	fmt.Println("  --to <v>                  目标软件：premiere|resolve|capcut（jianying 也可）")
-	fmt.Println("  --with <srt,edl,csv,fcpxml> 导出内容（默认 premiere/resolve=fcpxml,srt；capcut=srt,csv）")
-	fmt.Println("  --out-dir <dir>           导出目录（默认素材目录下 .mingest/export）")
-	fmt.Println("  --zip                     额外打包 zip")
 	fmt.Println("  --json                    输出 JSON 结果")
 	fmt.Println()
 	fmt.Println("ls 参数:")
@@ -270,47 +218,20 @@ func usage() {
 	fmt.Println("  --format <table|json>     输出格式（默认 table）")
 	fmt.Println("  --dedupe                  按 asset_id 去重（仅保留最新一条）")
 	fmt.Println()
-	fmt.Println("doctor 参数:")
-	fmt.Println("  --target <v>              发布目标：youtube|bilibili|shorts（默认 youtube）")
-	fmt.Println("  --strict                  启用更严格阈值")
-	fmt.Println("  --json                    输出 JSON 诊断结果")
-	fmt.Println()
-	fmt.Println("semantic 参数:")
-	fmt.Println("  --target <v>              目标场景：youtube|bilibili|shorts（默认 shorts）")
-	fmt.Println("  --provider <v>            LLM 提供方：auto|openai|openrouter（默认 auto）")
-	fmt.Println("  --model <v>               模型名（默认 openai: gpt-4.1-mini / openrouter: openai/gpt-4.1-mini）")
-	fmt.Println("  --base-url <url>          自定义 OpenAI 兼容网关地址（可用于 OpenRouter）")
-	fmt.Println("  --api-key <key>           API Key（也可通过环境变量注入）")
-	fmt.Println("  --candidate-limit <n>     Stage A 候选上限（默认 20）")
-	fmt.Println("  --preview-limit <n>       Stage D 预览数量（默认 8）")
-	fmt.Println("  --visual-diversity <0-1>  视觉去重强度（默认 0.5，越大越严格）")
-	fmt.Println("  --top-k <n>               Stage C/E 最终片段数（默认 3）")
-	fmt.Println("  --no-llm                  跳过 Stage B，仅使用规则分")
-	fmt.Println("  --decisions <path>        Stage E 使用指定评审决策文件")
-	fmt.Println("  --apply                   Stage E：写回 prep-plan 并执行 doctor 闸门")
-	fmt.Println("  --strict                  Stage E doctor 使用严格阈值")
-	fmt.Println("  --json                    输出 JSON 结果")
-	fmt.Println()
 	fmt.Println("平台:")
 	fmt.Println("  - youtube")
 	fmt.Println("  - bilibili")
 	fmt.Println()
 	fmt.Println("行为:")
-	fmt.Println("  - 自动检测并调用 yt-dlp / ffmpeg / ffprobe / deno|node")
+	fmt.Println("  - 自动检测并调用 yt-dlp / ffmpeg / ffprobe / node")
 	fmt.Println("  - 自动维护 cookies 缓存（优先使用；必要时从浏览器读取 cookies 刷新账户登录信息）")
 	fmt.Println("  - 若 Windows 下 Chrome cookies 读取/解密失败，可用 `mingest auth <platform>`（CDP）准备工具专用账户登录信息")
 	fmt.Println()
 	fmt.Println("可选环境变量:")
 	fmt.Println("  - MINGEST_BROWSER=chrome|firefox|chromium|edge")
 	fmt.Println("  - MINGEST_BROWSER_PROFILE=Default|Profile 1|...")
-	fmt.Println("  - MINGEST_JS_RUNTIME=node|deno")
+	fmt.Println("  - MINGEST_JS_RUNTIME=node")
 	fmt.Println("  - MINGEST_CHROME_PATH=C:\\\\Path\\\\To\\\\chrome.exe")
-	fmt.Println("  - MINGEST_WHISPER_PATH=/path/to/whisper")
-	fmt.Println("  - MINGEST_WHISPER_MODEL=tiny|base|small|medium|large")
-	fmt.Println("  - MINGEST_OPENAI_API_KEY / OPENAI_API_KEY")
-	fmt.Println("  - MINGEST_OPENROUTER_API_KEY / OPENROUTER_API_KEY")
-	fmt.Println("  - MINGEST_OPENROUTER_BASE_URL=https://openrouter.ai/api/v1")
-	fmt.Println("  - MINGEST_LLM_MODEL=gpt-4.1-mini|openai/gpt-4.1-mini")
 	fmt.Println("  - MINGEST_LOG_LEVEL=debug|info|warn|error（默认 info）")
 	fmt.Println("  - MINGEST_LOG_FORMAT=text|json（默认 text）")
 	fmt.Println()
@@ -321,8 +242,6 @@ func usage() {
 	fmt.Println("  - 31: ffmpeg 缺失（FFMPEG_MISSING）")
 	fmt.Println("  - 32: yt-dlp 缺失（YTDLP_MISSING）")
 	fmt.Println("  - 40: 下载失败（DOWNLOAD_FAILED）")
-	fmt.Println("  - 41: doctor 检查未通过（DOCTOR_FAILED）")
-	fmt.Println("  - 42: semantic 流程执行失败（SEMANTIC_FAILED）")
 }
 
 func isHelpArg(v string) bool {
@@ -336,7 +255,7 @@ func isHelpArg(v string) bool {
 
 func isVersionArg(v string) bool {
 	switch v {
-	case "-v", "--version", "version":
+	case "-V", "--version", "version":
 		return true
 	default:
 		return false
@@ -1008,39 +927,18 @@ func detectDeps() (deps, error) {
 		}
 	}
 
-	jsID := ""
-	jsPath := ""
 	requestedRuntime := strings.ToLower(strings.TrimSpace(os.Getenv("MINGEST_JS_RUNTIME")))
-	switch requestedRuntime {
-	case "":
-		// default: prefer deno first (bundled), then node
-		if denoPath, exists := findBinary("deno", wd, exeDir); exists {
-			jsID = "deno"
-			jsPath = denoPath
-		} else if nodePath, exists := findBinary("node", wd, exeDir); exists {
-			jsID = "node"
-			jsPath = nodePath
-		}
-	case "deno", "node":
-		if p, exists := findBinary(requestedRuntime, wd, exeDir); exists {
-			jsID = requestedRuntime
-			jsPath = p
-		} else {
-			return deps{}, dependencyError{
-				Message:  fmt.Sprintf("未找到指定 JS runtime: %s。请将其放在程序同目录，或加入 PATH。", requestedRuntime),
-				ExitCode: exitRuntimeMissing,
-			}
-		}
-	default:
+	if requestedRuntime != "" && requestedRuntime != "node" {
 		return deps{}, dependencyError{
-			Message:  fmt.Sprintf("无效的 MINGEST_JS_RUNTIME: %s（仅支持 node 或 deno）", requestedRuntime),
+			Message:  fmt.Sprintf("无效的 MINGEST_JS_RUNTIME: %s（仅支持 node）", requestedRuntime),
 			ExitCode: exitRuntimeMissing,
 		}
 	}
 
-	if jsID == "" || jsPath == "" {
+	nodePath, ok := findBinary("node", wd, exeDir)
+	if !ok {
 		return deps{}, dependencyError{
-			Message:  "未找到 JS runtime（deno 或 node）。请将 deno/node 放在程序同目录，或加入 PATH。",
+			Message:  "未找到 Node.js。请将 node 放在程序同目录，或加入 PATH。",
 			ExitCode: exitRuntimeMissing,
 		}
 	}
@@ -1049,8 +947,8 @@ func detectDeps() (deps, error) {
 		YtDlp:       tool{Name: "yt-dlp", Path: ytPath},
 		FFmpeg:      tool{Name: "ffmpeg", Path: ffmpegPath},
 		FFprobe:     tool{Name: "ffprobe", Path: ffprobePath},
-		JSRuntime:   tool{Name: jsID, Path: jsPath},
-		JSRuntimeID: jsID,
+		JSRuntime:   tool{Name: "node", Path: nodePath},
+		JSRuntimeID: "node",
 	}, nil
 }
 
@@ -1873,7 +1771,7 @@ func classifyFailure(output string, platform videoPlatform) (int, string) {
 	}
 
 	if strings.Contains(lower, "no supported javascript runtime could be found") {
-		return exitRuntimeMissing, "JS runtime 不可用。请确认 deno 或 node 可执行，并可被该程序访问。"
+		return exitRuntimeMissing, "Node.js 不可用。请确认 node 可执行，并可被该程序访问。"
 	}
 
 	if strings.Contains(lower, "ffmpeg not found") {
