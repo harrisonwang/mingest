@@ -156,16 +156,17 @@ fetch_ytdlp() {
 
 fetch_node() {
   local platform=""
+  local index_key=""
   local archive_ext=""
   local target="${out_dir}/node"
 
   case "${GOOS}/${GOARCH}" in
-    windows/amd64) platform="win-x64"; archive_ext="zip"; target="${out_dir}/node.exe" ;;
-    windows/arm64) platform="win-arm64"; archive_ext="zip"; target="${out_dir}/node.exe" ;;
-    linux/amd64) platform="linux-x64"; archive_ext="tar.xz" ;;
-    linux/arm64) platform="linux-arm64"; archive_ext="tar.xz" ;;
-    darwin/amd64) platform="darwin-x64"; archive_ext="tar.gz" ;;
-    darwin/arm64) platform="darwin-arm64"; archive_ext="tar.gz" ;;
+    windows/amd64) platform="win-x64"; index_key="win-x64-zip"; archive_ext="zip"; target="${out_dir}/node.exe" ;;
+    windows/arm64) platform="win-arm64"; index_key="win-arm64-zip"; archive_ext="zip"; target="${out_dir}/node.exe" ;;
+    linux/amd64) platform="linux-x64"; index_key="linux-x64"; archive_ext="tar.xz" ;;
+    linux/arm64) platform="linux-arm64"; index_key="linux-arm64"; archive_ext="tar.xz" ;;
+    darwin/amd64) platform="darwin-x64"; index_key="osx-x64-tar"; archive_ext="tar.gz" ;;
+    darwin/arm64) platform="darwin-arm64"; index_key="osx-arm64-tar"; archive_ext="tar.gz" ;;
     *) die "no node asset mapping for ${GOOS}/${GOARCH}" ;;
   esac
 
@@ -173,14 +174,14 @@ fetch_node() {
   download "https://nodejs.org/dist/index.json" "${index}"
 
   local version=""
-  version="$("${PYTHON}" - "${index}" "${platform}" <<'PY'
+  version="$("${PYTHON}" - "${index}" "${index_key}" <<'PY'
 import json, sys
-index_path, platform = sys.argv[1], sys.argv[2]
+index_path, index_key = sys.argv[1], sys.argv[2]
 with open(index_path, "r", encoding="utf-8") as f:
   releases = json.load(f)
 
 def has_platform(release):
-  return platform in release.get("files", [])
+  return index_key in release.get("files", [])
 
 for release in releases:
   if release.get("lts") and has_platform(release):
@@ -190,7 +191,7 @@ for release in releases:
   if has_platform(release):
     print(release["version"])
     raise SystemExit(0)
-raise SystemExit(f"node release not found for platform: {platform}")
+raise SystemExit(f"node release not found for file key: {index_key}")
 PY
 )"
 
