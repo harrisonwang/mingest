@@ -2,76 +2,49 @@
 
 ![og-image](og-image.png)
 
-**Mingest 是一个本地运行的视频批量下载 CLI**：输入 URL 或 URL 列表，自动调用 `yt-dlp` 下载，并默认合并为 `mp4`（嵌入封面与元数据）。下载失败时会留下结构化记录、错误码和恢复建议，方便只重跑失败任务。
+**Mingest 是一个本地运行的视频批量下载 CLI**：输入 URL 或 URL 列表，调用 `yt-dlp` 下载，并默认合并为 `mp4`。下载失败时会留下结构化记录、错误码和恢复建议，方便只重跑失败任务。
 
-> 合规提示：Mingest 仅用于下载你拥有版权或已获授权、或在法律与平台规则允许范围内可保存的内容。它不提供任何内容，不提供在线解析/代下服务，也不支持绕过 DRM 等技术保护措施。更多见：
-> [docs/LEGAL.md](docs/LEGAL.md)。
-
-```bash
-mingest get "https://www.youtube.com/watch?v=******"
-mingest get "https://www.bilibili.com/bangumi/play/ss******"
-mingest get "https://www.bilibili.com/bangumi/play/ep******"
-```
-
-说明：
-
-- 站点/格式支持最终取决于 `yt-dlp` 本身
-- 当前内置平台：`youtube`、`bilibili`
-
-## 能做什么
-
-- 自动检测并调用：`yt-dlp`、`ffmpeg`/`ffprobe`、`node`
-- 默认下载并合并为 `mp4`，附带元数据并嵌入封面
-- 自动维护 **cookies 缓存**（优先使用；必要时从浏览器读取 cookies 刷新登录状态）
-- Windows 下 Chrome cookies 读取失败时：自动尝试 **CDP**（让 Chrome 在进程内导出明文 cookies，避免读取/解密数据库）
-- 下载成功后生成 `asset_id`，每次成功/失败都会留下 `task_id` 结果记录
-- 支持批量下载、失败继续、JSONL 输出、只重跑失败任务
-- 支持 `mingest ls` 查看本机下载与失败记录
+> 合规提示：Mingest 仅用于下载你拥有版权或已获授权、或在法律与平台规则允许范围内可保存的内容。它不提供内容、不提供在线解析/代下服务，也不支持绕过 DRM 等技术保护措施。更多见 [docs/LEGAL.md](docs/LEGAL.md)。
 
 ## 快速开始
 
-1. 下载 Release 的可执行文件（见 GitHub Releases）
-2. 下载视频：
+下载视频：
 
 ```bash
 mingest get "<url>"
 ```
 
-3. 需要登录时（例如大会员、年龄确认、风险提示），先执行一次交互登录：
+需要登录时先执行一次交互登录：
 
 ```bash
 mingest auth login youtube
 mingest auth login bilibili
 ```
 
+支持的平台：
+
+- `youtube`
+- `bilibili`
+
+站点和格式支持最终取决于 `yt-dlp` 本身。
+
 ## 安装
 
 推荐优先使用包管理器安装：
-
-### Homebrew（macOS / Linux）
 
 ```bash
 brew tap harrisonwang/tap
 brew install mingest
 ```
 
-或直接指定 tap：
+也可以直接下载 GitHub Release 产物：
 
-```bash
-brew install harrisonwang/tap/mingest
-```
+- `*_slim`：只包含 Mingest，需要系统或同目录中已有 `yt-dlp`、`ffmpeg`/`ffprobe`、`node`
+- `*_bundled`：随包附带 `yt-dlp`、`ffmpeg`/`ffprobe`、`node`，解压后可直接使用
 
-若你暂时不使用包管理器，也可以直接下载 GitHub Release 的产物。
+`*_bundled` 中的第三方二进制版权和许可证见 [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES)。
 
-- `*_slim`：不内置工具，需要你自己装 `yt-dlp`、`ffmpeg`/`ffprobe`、`node`；Homebrew 使用这一版并自动安装依赖
-- `*_bundled`：随包附带 `yt-dlp`、`ffmpeg`/`ffprobe`、`node`（开箱即用，体积更大；含 `THIRD_PARTY_LICENSES` 满足各组件许可归属）
-
-说明：
-
-- 当前推荐安装渠道：`brew`
-- 首版分发默认不含系统签名/公证，系统安全提示属于预期行为
-
-## 用法
+## 常用命令
 
 下载：
 
@@ -89,7 +62,7 @@ mingest ls --failed
 mingest ls --missing
 ```
 
-交互登录（一次性准备登录信息，写入 cookies 缓存）：
+管理登录信息：
 
 ```bash
 mingest auth login <platform>
@@ -104,49 +77,24 @@ mingest auth clear youtube
 mingest -V
 ```
 
-支持的平台：
+## 登录与浏览器
 
-- `youtube`
-- `bilibili`
+Mingest 会把登录 cookies 缓存在本机。默认优先使用缓存，缓存失效时再从浏览器读取。
 
-## 登录信息与 cookies（自动模式）
+`auth login` 默认使用 Chrome；也可以指定浏览器：
 
-cookies 缓存文件（按平台分别保存）：
+```bash
+mingest auth login youtube --from-browser firefox
+```
 
-- Windows：`%LOCALAPPDATA%\\mingest\\youtube-cookies.txt` / `%LOCALAPPDATA%\\mingest\\bilibili-cookies.txt`
-- macOS / Linux：位于 `os.UserConfigDir()/mingest/` 下的同名文件
+或通过环境变量指定：
 
-默认行为（每次 `mingest get`）：
+```bash
+BROWSER=firefox mingest auth login youtube
+BROWSER=firefox mingest get "<url>"
+```
 
-- 优先使用 cookies 缓存（避免频繁读取浏览器数据）
-- 若缓存失效/缺失：按顺序从浏览器读取并刷新（默认顺序 `chrome -> firefox -> chromium -> edge`，失败会自动切换）
-- 为避免“未登录的浏览器覆盖掉已登录缓存”，浏览器导出的 cookies 会先写入临时文件；检测到有效登录信号后才会更新缓存
-
-`mingest auth login <platform>` 行为：
-
-- 启动一个工具专用的 Chrome profile（位于状态目录下的 `mingest/chrome-profile`）
-- 你在弹出的 Chrome 窗口完成登录后回到终端按回车
-- 工具从 Chrome 进程内导出 cookies，写入该平台的 cookies 缓存文件
-
-结果记录文件：
-
-- macOS / Linux / Windows：位于 `os.UserConfigDir()/mingest/results-v1.jsonl`
-- 每行是一条 JSON 记录，包含 `schema_version`、`task_id`、`asset_id`、`source_url`、`ok`、`error_code`、`exit_code`、`recovery_hint`、`recommended_command`
-
-Windows 常见情况：
-
-- `--cookies-from-browser chrome` 可能因为数据库锁定 / DPAPI / App-Bound Encryption 失败
-- 工具会在 Chrome 失败后自动走 CDP（无需 DPAPI 解密）
-
-## 隐私与安全
-
-- 全程本地运行：不提供在线解析/代下服务，视频文件与账户登录信息均不会经过我们的服务器
-- cookies 仅保存在你的本机，你可以随时删除（见上面的缓存路径）
-- 为减少隐私暴露，工具会把 cookies 缓存过滤为与目标站点相关的域名
-
-更多见：[docs/PRIVACY.md](docs/PRIVACY.md)。
-
-## 可用环境变量覆盖
+可用环境变量：
 
 - `BROWSER=chrome|firefox|chromium|edge`
 - `BROWSER_PROFILE=Default|Profile 1|...`
@@ -155,99 +103,28 @@ Windows 常见情况：
 - `LOG_LEVEL=debug|info|warn|error`
 - `LOG_FORMAT=text|json`
 
-## 依赖查找顺序
+Windows 下 Chrome 或 Firefox 的标准安装路径会自动查找；`CHROME_PATH` / `FIREFOX_PATH` 只用于便携版或非标准安装位置。
 
-每个依赖（`yt-dlp`、`ffmpeg`、`ffprobe`、`node`）按以下顺序查找：
+## 本地数据
 
-1. 当前工作目录（你运行 `mingest` 的目录）
-2. 程序所在目录
-3. 内置（`-tags embedtools` 构建时嵌入的工具，非默认发布方式）
-4. 系统 `PATH`
+Mingest 全程本地运行，不提供在线解析/代下服务。视频文件、URL、cookies 不会上传到 Mingest 服务器。
 
-## 默认下载参数
+常见本地文件：
 
-当前固定为：
+- Windows cookies 缓存：`%LOCALAPPDATA%\\mingest\\youtube-cookies.txt`
+- macOS / Linux cookies 缓存：`os.UserConfigDir()/mingest/`
+- 下载结果记录：`results-v1.jsonl`
 
-- `--output "%(title)s.%(ext)s"`
-- `--embed-thumbnail`
-- `--add-metadata`
-- `-f "bestvideo[vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4]/best"`
-- `--merge-output-format mp4`
+更多见 [docs/PRIVACY.md](docs/PRIVACY.md)。
 
-## 退出码
+## 文档
 
-- `20` `AUTH_REQUIRED`：需要登录
-- `21` `COOKIE_PROBLEM`：cookies 读取/解密/数据库占用问题
-- `30` `RUNTIME_MISSING`：`node` 不可用
-- `31` `FFMPEG_MISSING`：`ffmpeg`/`ffprobe` 不可用
-- `32` `YTDLP_MISSING`：`yt-dlp` 不可用
-- `40` `DOWNLOAD_FAILED`：下载失败（其它原因）
-
-## 常见问题
-
-1. 提示需要登录/会员/验证
-
-- 先在浏览器确认账号可正常观看
-- 再执行：`mingest auth login youtube` / `mingest auth login bilibili`
-- 若是“额外确认”（例如年龄确认/风险提示/会员提示），建议在 `auth` 打开的窗口中打开目标视频并完成确认后再回车
-
-2. Windows：`Could not copy Chrome cookie database` / `Failed to decrypt with DPAPI`
-
-- 这是 Chrome 数据库锁定或加密策略导致，工具会自动尝试 CDP
-- 若仍失败：请先彻底退出浏览器后重试，或切换到 Firefox（见 `BROWSER=firefox`）
-
-3. Linux：提示 `ffprobe not found`
-
-- 说明你用的是 `*_slim` 且系统/目录里只有 `ffmpeg` 没有 `ffprobe`
-- 换用 `*_bundled`，或确保 `ffprobe` 与 `ffmpeg` 同目录可用
-
-更多问答见 [docs/FAQ.md](docs/FAQ.md)。
-
-## 包管理器发布（维护者）
-
-本仓库内置了用于 Homebrew 分发的模板与工作流：
-
-- Homebrew 模板：
-  - `.github/homebrew/formula.rb.tmpl`
-- 工作流：
-  - `.github/workflows/build-and-release.yml`（发版后通知 tap 仓库）
-
-默认行为：
-
-- 每次发布 tag（`v*`）后，release workflow 会发布 slim / bundled 产物和 `SHA256SUMS.txt`
-- Homebrew 更新逻辑集中在 `harrisonwang/homebrew-tap`，本仓库只发送 `repository_dispatch` 通知
-
-Homebrew 通知 tap 所需 secret：
-
-- `HOMEBREW_TAP_TOKEN`：可触发 `harrisonwang/homebrew-tap` repository dispatch 的 token
-
-更多细节见 [docs/PACKAGING.md](docs/PACKAGING.md)。
-
-## 从源码构建
-
-默认（不嵌入工具）：
-
-```bash
-go build -o dist/mingest ./cmd/mingest
-```
-
-打包随附工具（推荐用于分发）：
-
-```bash
-scripts/fetch-embed-tools.sh --os <goos> --arch <goarch>
-go build -o dist/mingest ./cmd/mingest
-# 然后将 ingest/embedtools/assets/<goos>/ 下的工具复制到 mingest 同目录
-```
-
-说明：
-
-- 工具下载目录：`ingest/embedtools/assets/<goos>/`
-- 获取 `ffmpeg` 时会一并获取 `ffprobe`
-- GitHub Actions 工作流见 `.github/workflows/build-and-release.yml`
+- [docs/FAQ.md](docs/FAQ.md)：常见问题、浏览器登录、依赖查找
+- [docs/LEGAL.md](docs/LEGAL.md)：使用边界、DRM、平台规则
+- [docs/PRIVACY.md](docs/PRIVACY.md)：本地数据和隐私说明
+- [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES)：bundled 包第三方组件许可证
 
 ## 许可证
 
-本项目采用 [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) 开源协议。  
+Mingest 采用 [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) 开源协议。  
 Copyright (C) 2026 Harrison Wang <https://mingest.com>
-
-`*_bundled` 版本内置的 yt-dlp、ffmpeg/ffprobe、node 为独立第三方组件，其版权与许可见 [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES)。

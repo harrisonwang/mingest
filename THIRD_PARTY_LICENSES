@@ -1,57 +1,58 @@
 # 第三方组件许可证声明
 
-`*_bundled` 版本随包附带以下第三方二进制工具。本文件列出其版权与许可信息，以满足各组件许可证的归属要求。
+本文件用于说明 `*_bundled` 发布包随附的第三方二进制工具。它不是法律意见；如果你重新分发 bundled 包，请同时保留本文件、Mingest 的 `LICENSE`，以及各第三方组件随附的许可证/NOTICE 文件。
 
----
+`*_bundled` 当前随包附带：
+
+- `yt-dlp` / `yt-dlp.exe`
+- `ffmpeg` / `ffmpeg.exe`
+- `ffprobe` / `ffprobe.exe`
+- `node` / `node.exe`
+
+这些工具作为独立可执行文件随包分发，Mingest 在运行时调用它们；它们不是 Mingest 源码的一部分。
 
 ## yt-dlp
 
-- **来源**: https://github.com/yt-dlp/yt-dlp/releases
-- **许可证**: Unlicense (公共领域)
-- **说明**: 可自由使用、修改、分发，无附加条件。
-
----
-
-## Node.js
-
-- **来源**: https://nodejs.org/dist/
-- **许可证**: MIT License
-
-```
-MIT License
-
-Copyright Node.js contributors. All rights reserved.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-```
-
----
+- 项目：<https://github.com/yt-dlp/yt-dlp>
+- 发布文件：<https://github.com/yt-dlp/yt-dlp/releases>
+- 源码：<https://github.com/yt-dlp/yt-dlp>
+- 许可证说明：
+  - yt-dlp 源码仓库主要采用 Unlicense。
+  - 但官方说明指出，部分 release 文件包含不同许可证的第三方代码；其中 PyInstaller 打包的可执行文件包含 GPLv3+ 代码，因此该可执行文件整体应按 GPLv3+ 处理。
+  - 请以 yt-dlp release 随附的 `THIRD_PARTY_LICENSES.txt` 和上游 README 的 licensing section 为准。
 
 ## FFmpeg / FFprobe
 
-- **许可证**: GNU General Public License v2.0 或更高版本 (GPL)
-- **源码与构建来源**:
-  - FFmpeg 官方源码: https://ffmpeg.org/
-  - Windows/Linux 构建: https://github.com/BtbN/FFmpeg-Builds (ffmpeg-master-latest-*-gpl)
-  - macOS 构建: https://ffmpeg.martin-riedl.de/ (来自 Martin Riedl 的签名构建)
+- 项目：<https://ffmpeg.org/>
+- 官方法律与许可证说明：<https://www.ffmpeg.org/legal.html>
+- Windows/Linux 构建来源：<https://github.com/BtbN/FFmpeg-Builds>
+- macOS 构建来源：<https://ffmpeg.martin-riedl.de/>
+- 源码：<https://ffmpeg.org/download.html>
+- 许可证说明：
+  - FFmpeg 通常在 LGPLv2.1+ 下发布；如果构建启用了 GPL 组件或 GPL 依赖，FFmpeg 整体按 GPL 处理。
+  - Mingest release workflow 当前使用 BtbN 的 `gpl` variant，因此 bundled 包中的 Windows/Linux `ffmpeg` / `ffprobe` 应按 GPL 构建处理。
+  - 如果你重新分发这些二进制文件，需要确保用户可以获得与二进制对应的源码、构建脚本和许可证文本。
 
-GPL 要求：分发二进制时须提供对应源码之获取途径。您可通过上述链接获取 FFmpeg 完整源码及本发布所用构建的对应信息。本项目未对 FFmpeg 进行修改，所有版权归 FFmpeg 项目及其贡献者所有。若上述途径无法满足您的需求，您可联系本项目维护者（见 [README.md](../README.md)）获取书面源码提供要约。
+## Node.js
 
----
+- 项目：<https://nodejs.org/>
+- 源码：<https://github.com/nodejs/node>
+- 发布文件：<https://nodejs.org/dist/>
+- 许可证说明：
+  - Node.js 主体采用 MIT License。
+  - Node.js 也包含第三方开源组件；完整许可证以对应 Node.js release/source 中的 `LICENSE` 文件为准。
 
-本文件构成对上列第三方组件的归属声明，不改变 mingest 项目本身在 AGPL-3.0 下的许可条款。
+## 分发合规注意事项
+
+- 不要把本文件从 bundled 包中移除。
+- 不要把第三方二进制重命名成难以识别其来源的名字。
+- 对 GPL/LGPL 组件，确保用户能清楚获得对应源码和构建信息。
+- 如果 release 包中加入 `licenses/` 目录，建议至少包含：
+  - `licenses/yt-dlp/LICENSE`
+  - `licenses/yt-dlp/THIRD_PARTY_LICENSES.txt`
+  - `licenses/ffmpeg/COPYING.GPLv2`
+  - `licenses/ffmpeg/COPYING.GPLv3`
+  - `licenses/ffmpeg/COPYING.LGPLv2.1`
+  - `licenses/node/LICENSE`
+
+本文件不改变 Mingest 项目本身在 AGPL-3.0 下的许可条款。
