@@ -245,7 +245,7 @@ func usage() {
 	fmt.Println("  mingest get --batch <file> [--continue-on-error] [--jsonl]")
 	fmt.Println("  mingest get --failed-only <result.jsonl> [--continue-on-error] [--jsonl]")
 	fmt.Println("  mingest ls [--limit <n>] [--query <text>] [--failed] [--missing] [--format <table|json>]")
-	fmt.Println("  mingest auth login <platform> [--from-browser chrome]")
+	fmt.Println("  mingest auth login <platform> [--from-browser <chrome|firefox>]")
 	fmt.Println("  mingest auth status [platform] [--json]")
 	fmt.Println("  mingest auth validate <platform> [--url <url>] [--json]")
 	fmt.Println("  mingest auth clear <platform>")
@@ -278,7 +278,7 @@ func usage() {
 	fmt.Println("  validate <platform>       验证本地登录信号；配合 --url 可做联网探测")
 	fmt.Println("  clear <platform>          删除平台 cookies 缓存")
 	fmt.Println("  list                      列出支持平台与状态")
-	fmt.Println("  --from-browser chrome     auth login 的浏览器来源（当前支持 chrome/CDP）")
+	fmt.Println("  --from-browser <browser>  auth login 的浏览器来源（当前支持 chrome/firefox）")
 	fmt.Println("  --url <url>               auth validate 的联网探测 URL")
 	fmt.Println("  --json                    auth 输出 JSON")
 	fmt.Println()
@@ -289,15 +289,15 @@ func usage() {
 	fmt.Println("行为:")
 	fmt.Println("  - 自动检测并调用 yt-dlp / ffmpeg / ffprobe / node")
 	fmt.Println("  - 自动维护 cookies 缓存（优先使用；必要时从浏览器读取 cookies 刷新账户登录信息）")
-	fmt.Println("  - 若 Windows 下 Chrome cookies 读取/解密失败，可用 `mingest auth login <platform>`（CDP）准备工具专用账户登录信息")
+	fmt.Println("  - 若 Windows 下 Chrome cookies 读取/解密失败，可用 `mingest auth login <platform>` 准备账户登录信息")
 	fmt.Println()
 	fmt.Println("可选环境变量:")
-	fmt.Println("  - MINGEST_BROWSER=chrome|firefox|chromium|edge")
-	fmt.Println("  - MINGEST_BROWSER_PROFILE=Default|Profile 1|...")
-	fmt.Println("  - MINGEST_JS_RUNTIME=node")
-	fmt.Println("  - MINGEST_CHROME_PATH=C:\\\\Path\\\\To\\\\chrome.exe")
-	fmt.Println("  - MINGEST_LOG_LEVEL=debug|info|warn|error（默认 info）")
-	fmt.Println("  - MINGEST_LOG_FORMAT=text|json（默认 text）")
+	fmt.Println("  - BROWSER=chrome|firefox|chromium|edge")
+	fmt.Println("  - BROWSER_PROFILE=Default|Profile 1|...")
+	fmt.Println("  - CHROME_PATH=C:\\\\Path\\\\To\\\\chrome.exe")
+	fmt.Println("  - FIREFOX_PATH=C:\\\\Path\\\\To\\\\firefox.exe")
+	fmt.Println("  - LOG_LEVEL=debug|info|warn|error（默认 info）")
+	fmt.Println("  - LOG_FORMAT=text|json（默认 text）")
 	fmt.Println()
 	fmt.Println("退出码:")
 	fmt.Println("  - 20: 需要登录（AUTH_REQUIRED）")
@@ -566,8 +566,8 @@ func parseAuthOptions(args []string) (authOptions, error) {
 		if opts.Platform == "" {
 			return authOptions{}, fmt.Errorf("`mingest auth login` 缺少平台")
 		}
-		if opts.FromBrowser != "" && opts.FromBrowser != "chrome" {
-			return authOptions{}, fmt.Errorf("`auth login` 当前仅支持 `--from-browser chrome`")
+		if opts.FromBrowser != "" && !isSupportedAuthLoginBrowser(opts.FromBrowser) {
+			return authOptions{}, fmt.Errorf("`auth login` 当前仅支持 `--from-browser chrome|firefox`")
 		}
 		if opts.ValidateURL != "" {
 			return authOptions{}, fmt.Errorf("`--url` 仅支持 auth validate")
@@ -606,7 +606,7 @@ func runAuthCommand(opts authOptions) int {
 	switch opts.Action {
 	case "login":
 		p, _ := platformByID(opts.Platform)
-		return runAuth(p)
+		return runAuthLogin(p, opts.FromBrowser)
 	case "status":
 		return runAuthStatus(opts)
 	case "validate":
@@ -616,6 +616,27 @@ func runAuthCommand(opts authOptions) int {
 	default:
 		logError("auth.unsupported_action", "action", opts.Action)
 		return exitUsage
+	}
+}
+
+func runAuthLogin(p videoPlatform, explicitBrowser string) int {
+	browser := strings.ToLower(strings.TrimSpace(explicitBrowser))
+	if browser == "" {
+		browser = selectedBrowserEnv()
+	}
+	if browser == "" {
+		browser = "chrome"
+	}
+	if !isSupportedAuthLoginBrowser(browser) {
+		logError("auth.browser_unsupported", "browser", browser, "supported", "chrome,firefox")
+		return exitUsage
+	}
+
+	switch browser {
+	case "firefox":
+		return runFirefoxAuth(p)
+	default:
+		return runChromeAuth(p)
 	}
 }
 
@@ -1532,14 +1553,6 @@ func detectDeps() (deps, error) {
 		}
 	}
 
-	requestedRuntime := strings.ToLower(strings.TrimSpace(os.Getenv("MINGEST_JS_RUNTIME")))
-	if requestedRuntime != "" && requestedRuntime != "node" {
-		return deps{}, dependencyError{
-			Message:  fmt.Sprintf("无效的 MINGEST_JS_RUNTIME: %s（仅支持 node）", requestedRuntime),
-			ExitCode: exitRuntimeMissing,
-		}
-	}
-
 	nodePath, ok := findBinary("node", wd, exeDir)
 	if !ok {
 		return deps{}, dependencyError{
@@ -1566,11 +1579,6 @@ func executableDir() (string, error) {
 }
 
 func findBinary(name string, preferredDirs ...string) (string, bool) {
-	// 优先查找嵌入的二进制文件
-	if path, ok := embedtools.Find(name); ok {
-		return path, true
-	}
-
 	candidates := []string{name}
 	if runtime.GOOS == "windows" && !strings.HasSuffix(strings.ToLower(name), ".exe") {
 		candidates = append(candidates, name+".exe")
@@ -1586,6 +1594,10 @@ func findBinary(name string, preferredDirs ...string) (string, bool) {
 				return local, true
 			}
 		}
+	}
+
+	if path, ok := embedtools.Find(name); ok {
+		return path, true
 	}
 
 	for _, c := range candidates {
@@ -1658,9 +1670,12 @@ func isRunnableFile(path string) bool {
 }
 
 func buildAuthSources() []authSource {
-	if v := strings.TrimSpace(os.Getenv("MINGEST_BROWSER")); v != "" {
-		lower := strings.ToLower(v)
-		return []authSource{{Kind: authKindBrowser, Value: lower}}
+	if v := selectedBrowserEnv(); v != "" {
+		if !isSupportedBrowserName(v) {
+			logWarn("auth.browser_env_invalid", "env", envBrowser, "value", v)
+			return nil
+		}
+		return []authSource{{Kind: authKindBrowser, Value: v}}
 	}
 
 	browsers := autoBrowserOrder()
@@ -1850,8 +1865,8 @@ func runWithAuthFallback(targetURL string, d deps, platform videoPlatform, sourc
 			}
 		}
 		if failure.ExitCode == exitOK {
-			if i > 0 && strings.TrimSpace(os.Getenv("MINGEST_BROWSER")) == "" {
-				logInfo("auth.browser_auto_switched", "browser", src.Value, "env", "MINGEST_BROWSER")
+			if i > 0 && selectedBrowserEnv() == "" {
+				logInfo("auth.browser_auto_switched", "browser", src.Value, "env", envBrowser)
 			}
 			return failure, paths
 		}
@@ -1891,7 +1906,11 @@ func runWithAuthFallback(targetURL string, d deps, platform videoPlatform, sourc
 	if shouldTryNextAuth(lastFailure.ExitCode) {
 		logError("auth.no_valid_session")
 		logError("auth.recovery_hint", "hint", "login in browser and retry")
-		logError("auth.recovery_hint", "hint", "MINGEST_BROWSER=firefox mingest get <url>")
+		if selectedBrowserEnv() == "" {
+			logError("auth.recovery_hint", "hint", "BROWSER=firefox mingest get <url>")
+		} else {
+			logError("auth.recovery_hint", "hint", "check BROWSER login/profile and retry")
+		}
 		cmd := authLoginCommand(platform)
 		logError("auth.recovery_hint", "hint", "run auth first", "command", cmd)
 		if lastFailure.RecommendedCommand == "" {
@@ -1926,7 +1945,7 @@ func buildYtDlpArgs(targetURL string, d deps, src authSource, cfg ytDlpConfig) [
 	switch src.Kind {
 	case authKindBrowser:
 		browserArg := src.Value
-		if p := strings.TrimSpace(os.Getenv("MINGEST_BROWSER_PROFILE")); p != "" {
+		if p := selectedBrowserProfile(); p != "" {
 			browserArg = browserArg + ":" + p
 		}
 		args = append(args, "--cookies-from-browser", browserArg)
@@ -1944,7 +1963,7 @@ func buildYtDlpArgsWithCookieCache(targetURL string, d deps, src authSource, coo
 	switch src.Kind {
 	case authKindBrowser:
 		browserArg := src.Value
-		if p := strings.TrimSpace(os.Getenv("MINGEST_BROWSER_PROFILE")); p != "" {
+		if p := selectedBrowserProfile(); p != "" {
 			browserArg = browserArg + ":" + p
 		}
 		args = append(args, "--cookies-from-browser", browserArg)

@@ -24,7 +24,7 @@ import (
 )
 
 func configureLogger() {
-	level := parseLogLevel(os.Getenv("MINGEST_LOG_LEVEL"))
+	level := parseLogLevel(envString(envLogLevel))
 	options := &slog.HandlerOptions{
 		Level: level,
 		ReplaceAttr: func(_ []string, attr slog.Attr) slog.Attr {
@@ -38,7 +38,7 @@ func configureLogger() {
 	}
 
 	var handler slog.Handler
-	format := strings.ToLower(strings.TrimSpace(os.Getenv("MINGEST_LOG_FORMAT")))
+	format := strings.ToLower(envString(envLogFormat))
 	if format == "json" {
 		handler = slog.NewJSONHandler(os.Stderr, options)
 	} else {

@@ -43,6 +43,16 @@ func TestParseAuthOptionsValidateURL(t *testing.T) {
 	}
 }
 
+func TestParseAuthOptionsLoginFirefox(t *testing.T) {
+	opts, err := parseAuthOptions([]string{"login", "youtube", "--from-browser", "firefox"})
+	if err != nil {
+		t.Fatalf("parseAuthOptions returned error: %v", err)
+	}
+	if opts.Action != "login" || opts.Platform != "youtube" || opts.FromBrowser != "firefox" {
+		t.Fatalf("unexpected opts: %+v", opts)
+	}
+}
+
 func TestClassifyFailureBotCheck(t *testing.T) {
 	failure := classifyFailure("ERROR: [youtube] abc: Sign in to confirm you're not a bot", youtubePlatform())
 	if failure.ExitCode != exitAuthRequired {

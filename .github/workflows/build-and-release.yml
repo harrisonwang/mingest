@@ -94,7 +94,7 @@ jobs:
             out/*.tar.gz
             out/*.zip
 
-      - name: Download tools for embedding
+      - name: Download tools for bundled package
         shell: bash
         run: |
           scripts/fetch-embed-tools.sh --os "${{ matrix.goos }}" --arch "${{ matrix.goarch }}"
@@ -105,7 +105,7 @@ jobs:
           mkdir -p dist
           out="dist/mingest-bundled${{ matrix.exe_ext }}"
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
-            go build -tags embedtools -trimpath -ldflags "-s -w -X mingest/ingest.version=${VERSION}" -o "$out" ./cmd/mingest
+            go build -trimpath -ldflags "-s -w -X mingest/ingest.version=${VERSION}" -o "$out" ./cmd/mingest
 
       - name: Package bundled (tar.gz)
         if: runner.os != 'Windows'
@@ -115,6 +115,7 @@ jobs:
           rm -rf package
           mkdir -p package/mingest out
           cp "dist/mingest-bundled" "package/mingest/mingest"
+          cp ingest/embedtools/assets/${{ matrix.goos }}/* "package/mingest/"
           cp README.md "package/mingest/" || true
           cp THIRD_PARTY_LICENSES "package/mingest/" || true
           tar -C package -czf "out/${pkg}.tar.gz" mingest
@@ -128,6 +129,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path package\mingest | Out-Null
           New-Item -ItemType Directory -Force -Path out | Out-Null
           Copy-Item "dist\mingest-bundled.exe" "package\mingest\mingest.exe"
+          Copy-Item "ingest\embedtools\assets\${{ matrix.goos }}\*" "package\mingest\"
           Copy-Item "README.md" "package\mingest\README.md"
           Copy-Item "THIRD_PARTY_LICENSES" "package\mingest\THIRD_PARTY_LICENSES"
           Compress-Archive -Path "package\mingest" -DestinationPath "out\$pkg.zip" -Force

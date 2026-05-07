@@ -36,7 +36,7 @@ import (
 	"time"
 )
 
-func runAuth(platform videoPlatform) int {
+func runChromeAuth(platform videoPlatform) int {
 	chromePath, err := findChromeExecutable()
 	if err != nil {
 		logError("auth.chrome_not_found", "error", err)
@@ -146,11 +146,11 @@ func appStateDir() (string, error) {
 }
 
 func findChromeExecutable() (string, error) {
-	if p := strings.TrimSpace(os.Getenv("MINGEST_CHROME_PATH")); p != "" {
+	if p := envString(envChromePath); p != "" {
 		if isRunnableFile(p) {
 			return p, nil
 		}
-		return "", fmt.Errorf("MINGEST_CHROME_PATH 无效: %s", p)
+		return "", fmt.Errorf("CHROME_PATH 无效: %s", p)
 	}
 
 	switch runtime.GOOS {
@@ -181,7 +181,7 @@ func findChromeExecutable() (string, error) {
 		}
 	}
 
-	return "", errors.New("未找到 Chrome。可通过 MINGEST_CHROME_PATH 指定 chrome 可执行文件路径")
+	return "", errors.New("未找到 Chrome。可通过 CHROME_PATH 指定 chrome 可执行文件路径")
 }
 
 type chromeCookie struct {

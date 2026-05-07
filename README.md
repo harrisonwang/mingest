@@ -64,7 +64,7 @@ brew install harrisonwang/tap/mingest
 若你暂时不使用包管理器，也可以直接下载 GitHub Release 的产物。
 
 - `*_slim`：不内置工具，需要你自己装 `yt-dlp`、`ffmpeg`/`ffprobe`、`node`；Homebrew 使用这一版并自动安装依赖
-- `*_bundled`：内置 `yt-dlp`、`ffmpeg`/`ffprobe`、`node`（开箱即用，体积更大；含 `THIRD_PARTY_LICENSES` 满足各组件许可归属）
+- `*_bundled`：随包附带 `yt-dlp`、`ffmpeg`/`ffprobe`、`node`（开箱即用，体积更大；含 `THIRD_PARTY_LICENSES` 满足各组件许可归属）
 
 说明：
 
@@ -148,18 +148,20 @@ Windows 常见情况：
 
 ## 可用环境变量覆盖
 
-- `MINGEST_BROWSER=chrome|firefox|chromium|edge`
-- `MINGEST_BROWSER_PROFILE=Default|Profile 1|...`
-- `MINGEST_JS_RUNTIME=node`
-- `MINGEST_CHROME_PATH=C:\\Path\\To\\chrome.exe`
+- `BROWSER=chrome|firefox|chromium|edge`
+- `BROWSER_PROFILE=Default|Profile 1|...`
+- `CHROME_PATH=C:\\Path\\To\\chrome.exe`
+- `FIREFOX_PATH=C:\\Path\\To\\firefox.exe`
+- `LOG_LEVEL=debug|info|warn|error`
+- `LOG_FORMAT=text|json`
 
 ## 依赖查找顺序
 
 每个依赖（`yt-dlp`、`ffmpeg`、`ffprobe`、`node`）按以下顺序查找：
 
-1. 内置（`-tags embedtools` 构建时嵌入的工具）
-2. 当前工作目录（你运行 `mingest` 的目录）
-3. 程序所在目录
+1. 当前工作目录（你运行 `mingest` 的目录）
+2. 程序所在目录
+3. 内置（`-tags embedtools` 构建时嵌入的工具，非默认发布方式）
 4. 系统 `PATH`
 
 ## 默认下载参数
@@ -192,7 +194,7 @@ Windows 常见情况：
 2. Windows：`Could not copy Chrome cookie database` / `Failed to decrypt with DPAPI`
 
 - 这是 Chrome 数据库锁定或加密策略导致，工具会自动尝试 CDP
-- 若仍失败：请先彻底退出浏览器后重试，或切换到 Firefox（见 `MINGEST_BROWSER=firefox`）
+- 若仍失败：请先彻底退出浏览器后重试，或切换到 Firefox（见 `BROWSER=firefox`）
 
 3. Linux：提示 `ffprobe not found`
 
@@ -229,11 +231,12 @@ Homebrew 通知 tap 所需 secret：
 go build -o dist/mingest ./cmd/mingest
 ```
 
-打包内置工具（推荐用于分发）：
+打包随附工具（推荐用于分发）：
 
 ```bash
 scripts/fetch-embed-tools.sh --os <goos> --arch <goarch>
-go build -tags embedtools -o dist/mingest ./cmd/mingest
+go build -o dist/mingest ./cmd/mingest
+# 然后将 ingest/embedtools/assets/<goos>/ 下的工具复制到 mingest 同目录
 ```
 
 说明：

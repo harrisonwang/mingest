@@ -5,7 +5,8 @@ usage() {
   cat <<'EOF'
 fetch-embed-tools.sh
 
-Downloads tool binaries into embed/<goos>/ for optional embedding (build tag: embedtools).
+Downloads tool binaries into ingest/embedtools/assets/<goos>/ for bundled packages.
+The same directory can still be used by optional embedtools builds.
 Note: when fetching ffmpeg, this script also fetches ffprobe from the same build (if available).
 
 Examples:
