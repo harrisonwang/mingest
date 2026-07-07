@@ -92,3 +92,57 @@ func TestFilterResultRecordsFailedAndMissing(t *testing.T) {
 func writeTestFile(path string) error {
 	return os.WriteFile(path, []byte("ok"), 0o600)
 }
+
+func TestClassifyFailureBilibili412IsGenericDownloadFailure(t *testing.T) {
+	// The 412 self-heal hinges on this: a Bilibili HTTP 412 must land in the
+	// generic DOWNLOAD_FAILED bucket so runGetOne triggers the yt-dlp auto-update.
+	failure := classifyFailure(
+		"ERROR: [BiliBili] abc: Unable to download JSON metadata: HTTP Error 412: Precondition Failed",
+		bilibiliPlatform(),
+	)
+	if failure.ExitCode != exitDownloadFailed || failure.ErrorCode != errorDownloadFailed {
+		t.Fatalf("expected generic download failure for 412, got exit=%d code=%s", failure.ExitCode, failure.ErrorCode)
+	}
+}
+
+func TestAutoUpdateEnabledRespectsEnv(t *testing.T) {
+	for _, v := range []string{"1", "true", "yes", "on", "ON", "True"} {
+		t.Setenv(envDisableAutoUpdate, v)
+		if autoUpdateEnabled() {
+			t.Fatalf("expected auto-update disabled for %q", v)
+		}
+	}
+	for _, v := range []string{"", "0", "off", "no"} {
+		t.Setenv(envDisableAutoUpdate, v)
+		if !autoUpdateEnabled() {
+			t.Fatalf("expected auto-update enabled for %q", v)
+		}
+	}
+}
+
+func TestYtDlpReleaseAssetKnownPlatforms(t *testing.T) {
+	asset, err := ytDlpReleaseAsset()
+	if err != nil {
+		t.Skipf("unsupported platform for auto-update: %v", err)
+	}
+	switch asset {
+	case "yt-dlp", "yt-dlp.exe", "yt-dlp_macos":
+		// expected
+	default:
+		t.Fatalf("unexpected yt-dlp asset name: %s", asset)
+	}
+}
+
+func TestManagedYtDlpPathUnderStateDir(t *testing.T) {
+	p, err := managedYtDlpPath()
+	if err != nil {
+		t.Fatalf("managedYtDlpPath error: %v", err)
+	}
+	if filepath.Base(filepath.Dir(p)) != managedToolsDirName {
+		t.Fatalf("expected managed yt-dlp under %q, got %s", managedToolsDirName, p)
+	}
+	base := filepath.Base(p)
+	if base != "yt-dlp" && base != "yt-dlp.exe" {
+		t.Fatalf("unexpected managed binary name: %s", base)
+	}
+}

@@ -233,6 +233,8 @@ func Main(args []string) int {
 			return exitUsage
 		}
 		return runAuthCommand(opts)
+	case "update":
+		return runUpdate(args[2:])
 	default:
 		usage()
 		return exitUsage
@@ -250,6 +252,7 @@ func usage() {
 	fmt.Println("  mingest auth validate <platform> [--url <url>] [--json]")
 	fmt.Println("  mingest auth clear <platform>")
 	fmt.Println("  mingest auth list [--json]")
+	fmt.Println("  mingest update [yt-dlp]")
 	fmt.Println("  mingest -V|--version")
 	fmt.Println()
 	fmt.Println("get 参数:")
@@ -286,8 +289,12 @@ func usage() {
 	fmt.Println("  - youtube")
 	fmt.Println("  - bilibili")
 	fmt.Println()
+	fmt.Println("update 参数:")
+	fmt.Println("  update [yt-dlp]           下载并更新 yt-dlp 到最新版（存放在应用状态目录，优先于内置版本）")
+	fmt.Println()
 	fmt.Println("行为:")
 	fmt.Println("  - 自动检测并调用 yt-dlp / ffmpeg / ffprobe / node")
+	fmt.Println("  - 优先使用已自更新的 yt-dlp；下载因 yt-dlp 陈旧而失败时自动更新并重试一次")
 	fmt.Println("  - 自动维护 cookies 缓存（优先使用；必要时从浏览器读取 cookies 刷新账户登录信息）")
 	fmt.Println("  - 若 Windows 下 Chrome cookies 读取/解密失败，可用 `mingest auth login <platform>` 准备账户登录信息")
 	fmt.Println()
@@ -298,6 +305,7 @@ func usage() {
 	fmt.Println("  - FIREFOX_PATH=C:\\\\Path\\\\To\\\\firefox.exe")
 	fmt.Println("  - LOG_LEVEL=debug|info|warn|error（默认 info）")
 	fmt.Println("  - LOG_FORMAT=text|json（默认 text）")
+	fmt.Println("  - MINGEST_NO_AUTO_UPDATE=1（关闭下载失败时自动更新 yt-dlp）")
 	fmt.Println()
 	fmt.Println("退出码:")
 	fmt.Println("  - 20: 需要登录（AUTH_REQUIRED）")
@@ -1008,6 +1016,16 @@ func runGetOne(opts getOptions) (resultRecord, int) {
 		ProgressOnly:     opts.AssetIDOnly && !opts.JSON,
 	}
 	failure, movedPaths := runWithAuthFallback(opts.TargetURL, found, p, authSources, cookieFile, cfg)
+	// Self-heal: a generic download failure often means the bundled yt-dlp has
+	// gone stale against an evolving site (e.g. Bilibili's HTTP 412). Refresh
+	// yt-dlp once and retry before giving up.
+	if failure.ExitCode == exitDownloadFailed && failure.ErrorCode == errorDownloadFailed {
+		if updated, changed := tryAutoUpdateYtDlp(found.YtDlp); changed {
+			logInfo("yt_dlp.auto_update_retry", "old_path", found.YtDlp.Path, "new_path", updated.Path)
+			found.YtDlp = updated
+			failure, movedPaths = runWithAuthFallback(opts.TargetURL, found, p, authSources, cookieFile, cfg)
+		}
+	}
 	if failure.ExitCode != exitOK {
 		rec := resultRecordFor(opts.TargetURL, p)
 		rec.OK = false
@@ -1519,9 +1537,10 @@ func detectDeps() (deps, error) {
 	}
 	wd, _ := os.Getwd()
 
-	// Prefer current working directory (where users typically place the tool bundle),
-	// then the executable directory, then PATH.
-	ytPath, ok := findBinary("yt-dlp", wd, exeDir)
+	// Prefer the managed (self-updated) yt-dlp, then the current working directory
+	// (where users typically place the tool bundle), then the executable
+	// directory, then PATH.
+	ytPath, ok := resolveYtDlpBinary(wd, exeDir)
 	if !ok {
 		return deps{}, dependencyError{
 			Message:  "未找到 yt-dlp。请将 yt-dlp 放在程序同目录，或加入 PATH。",
